@@ -1,0 +1,9 @@
+{
+  "task": "gene_correlation_heatmap",
+  "task_id": "tp53-dna-damage-correlation",
+  "target_gene": "TP53",
+  "gene_list_file": "tcga_toolkit/templates/example_dna_damage_pathway_genes.txt",
+  "gene_column": "gene",
+  "method": "pearson",
+  "sample_filter": ["Tumor"]
+}

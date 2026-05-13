@@ -1,0 +1,8 @@
+{
+  "task": "external_validate",
+  "task_id": "demo-external-validate",
+  "cohort_name": "EXAMPLE_COHORT",
+  "expression_file": "path/to/external_expression.tsv",
+  "clinical_file": "path/to/external_clinical.tsv",
+  "weight_file": "path/to/tcga_runs/<lasso_run>/results/TCGA-BRCA_prognostic_coefficients.csv"
+}
