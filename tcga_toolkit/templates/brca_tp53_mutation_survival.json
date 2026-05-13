@@ -1,0 +1,6 @@
+{
+  "task": "mutation_survival",
+  "task_id": "brca-tp53-mutation-survival",
+  "project": "TCGA-BRCA",
+  "gene": "TP53"
+}

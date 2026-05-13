@@ -1,0 +1,7 @@
+{
+  "task": "stage_analysis",
+  "task_id": "brca-mki67-stage",
+  "project": "TCGA-BRCA",
+  "gene": "MKI67",
+  "stage_column": "ajcc_pathologic_stage"
+}

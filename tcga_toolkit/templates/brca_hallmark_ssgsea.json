@@ -1,0 +1,11 @@
+{
+  "task": "ssgsea_score",
+  "task_id": "brca-hallmark-ssgsea",
+  "project": "TCGA-BRCA",
+  "method": "ssgsea",
+  "gmt_paths": [
+    "1-Input/Homo-HALLMARK-gmts.txt"
+  ],
+  "min_size": 10,
+  "max_size": 500
+}

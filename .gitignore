@@ -1,0 +1,67 @@
+# --- Data directories (never commit raw / serialised cohort data) ---
+0-Data/
+GDCdata/
+GTEX/
+1-Input/*.rda
+1-Input/*.Rdata
+1-Input/*.tsv
+1-Input/*.csv
+
+# --- Toolkit runtime outputs and caches ---
+tcga_runs/
+.tcga_cache/
+2-Output/
+
+# --- Optional: notebooks / external data ---
+notebooks/
+*.ipynb_checkpoints
+
+# --- Local Claude / editor state ---
+.claude/settings.local.json
+.claude/skills/
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# --- macOS / Linux / Windows metadata ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+
+# --- R artefacts ---
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+
+# --- Python adapter artefacts ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Large binary blobs that occasionally sneak in ---
+*.rda
+*.rds
+*.Rdata
+*.h5
+*.h5ad
+*.parquet
+*.feather
+*.bam
+*.bai
+*.vcf
+*.vcf.gz
+*.maf
+*.maf.gz
+
+# --- Exception: templates and example signatures ARE tracked ---
+!tcga_toolkit/templates/*.json
+!tcga_toolkit/templates/*.tsv
+!tcga_toolkit/templates/*.txt

@@ -1,0 +1,10 @@
+{
+  "task": "prognostic_model",
+  "task_id": "brca-demo-lasso-cox",
+  "project": "TCGA-BRCA",
+  "method": "lasso_cox",
+  "signature_file": "tcga_toolkit/templates/example_dna_damage_pathway_genes.txt",
+  "test_fraction": 0.3,
+  "seed": 20260513,
+  "time_points": [365, 1095, 1825]
+}

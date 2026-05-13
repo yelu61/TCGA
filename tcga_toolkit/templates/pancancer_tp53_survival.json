@@ -1,0 +1,12 @@
+{
+  "task": "survival_map",
+  "task_id": "pancancer-tp53-survival",
+  "gene": "TP53",
+  "projects": [
+    "TCGA-BRCA",
+    "TCGA-LUAD",
+    "TCGA-KIRC",
+    "TCGA-COAD",
+    "TCGA-HNSC"
+  ]
+}

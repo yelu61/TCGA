@@ -1,0 +1,13 @@
+{
+  "task": "validate_sc_signatures",
+  "task_id": "target-os-sc-signature",
+  "project": "TARGET-OS",
+  "signature_file": "tcga_toolkit/templates/example_signature.tsv",
+  "signature_method": "mean_z",
+  "clinical_columns": [
+    "Group",
+    "gender",
+    "age_at_index",
+    "metastasis_at_diagnosis"
+  ]
+}

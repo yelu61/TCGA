@@ -1,0 +1,11 @@
+{
+  "task": "methylation_diff",
+  "task_id": "brca-methylation-tn",
+  "project": "TCGA-BRCA",
+  "group_column": "Group",
+  "numerator": "Tumor",
+  "denominator": "Normal",
+  "delta_beta_cutoff": 0.1,
+  "padj_cutoff": 0.05,
+  "top_n": 100
+}

@@ -1,0 +1,11 @@
+{
+  "task": "run_deg",
+  "task_id": "target-os-metas-vs-nonmetas",
+  "project": "TARGET-OS",
+  "group_column": "metastasis_at_diagnosis",
+  "numerator": "Metastasis, NOS",
+  "denominator": "No Metastasis",
+  "padj_cutoff": 0.05,
+  "min_count": 10,
+  "min_fraction": 0.25
+}

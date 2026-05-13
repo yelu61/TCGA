@@ -1,0 +1,10 @@
+{
+  "task": "wgcna_modules",
+  "task_id": "brca-wgcna",
+  "project": "TCGA-BRCA",
+  "n_top_genes": 5000,
+  "min_module_size": 30,
+  "merge_cut_height": 0.25,
+  "sample_filter": ["Tumor"],
+  "trait_columns": ["Group", "age_at_index", "ajcc_pathologic_stage"]
+}

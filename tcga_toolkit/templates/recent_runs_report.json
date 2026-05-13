@@ -1,0 +1,8 @@
+{
+  "task": "render_report",
+  "task_id": "recent-runs-summary",
+  "run_dirs": [
+    "path/to/tcga_runs/<run-id-1>",
+    "path/to/tcga_runs/<run-id-2>"
+  ]
+}

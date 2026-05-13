@@ -1,0 +1,7 @@
+{
+  "task": "tmb_analysis",
+  "task_id": "brca-tmb",
+  "project": "TCGA-BRCA",
+  "tmb_source": "auto",
+  "exome_size_mb": 38
+}

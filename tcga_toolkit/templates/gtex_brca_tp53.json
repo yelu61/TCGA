@@ -1,0 +1,6 @@
+{
+  "task": "run_gtex_compare",
+  "task_id": "brca-tp53-gtex",
+  "project": "TCGA-BRCA",
+  "gene": "TP53"
+}

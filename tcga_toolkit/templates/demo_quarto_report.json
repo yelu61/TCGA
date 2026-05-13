@@ -1,0 +1,11 @@
+{
+  "task": "render_report",
+  "task_id": "demo-quarto-report",
+  "format": "quarto",
+  "output_formats": ["html", "pdf"],
+  "title": "TCGA Analysis Report",
+  "run_dirs": [
+    "path/to/tcga_runs/<run-id-1>",
+    "path/to/tcga_runs/<run-id-2>"
+  ]
+}
