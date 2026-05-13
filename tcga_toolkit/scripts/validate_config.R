@@ -47,10 +47,21 @@ add_issue <- function(msg) issues[[length(issues) + 1L]] <<- msg
 add_note <- function(msg) notes[[length(notes) + 1L]] <<- msg
 
 check_file <- function(path, label) {
-  if (is.null(path) || !nzchar(path)) {
+  if (is.null(path) || (is.character(path) && !any(nzchar(path)))) {
     return(invisible(NULL))
   }
-  if (!file.exists(path)) {
+  # Skip pipeline variable placeholders (resolved at runtime)
+  if (grepl("\\{\\{", path)) {
+    return(invisible(NULL))
+  }
+  # Resolve relative to project root when cwd differs from repo root
+  root <- project_root()
+  resolved <- path
+  if (!is.null(root) && !file.exists(path)) {
+    alt <- file.path(root, path)
+    if (file.exists(alt)) resolved <- alt
+  }
+  if (!file.exists(resolved)) {
     add_issue(sprintf("%s does not exist: %s", label, path))
   } else {
     add_note(sprintf("%s present: %s", label, path))
@@ -58,14 +69,16 @@ check_file <- function(path, label) {
 }
 
 check_project_data <- function(project) {
-  if (is.null(project) || !nzchar(project)) {
-    return(invisible(NULL))
-  }
-  files <- project_files(project)
-  if (!file.exists(files$mrna) && !file.exists(files$deg_input)) {
-    add_issue(sprintf("Project %s: no expression rda found at %s or %s", project, files$mrna, files$deg_input))
-  } else {
-    add_note(sprintf("Project %s: expression rda present", project))
+  if (is.null(project)) return(invisible(NULL))
+  if (is.list(project)) project <- unlist(project)
+  if (!is.character(project) || !any(nzchar(project))) return(invisible(NULL))
+  for (p in project[nzchar(project)]) {
+    files <- project_files(p)
+    if (!file.exists(files$mrna) && !file.exists(files$deg_input)) {
+      add_issue(sprintf("Project %s: no expression rda found at %s or %s", p, files$mrna, files$deg_input))
+    } else {
+      add_note(sprintf("Project %s: expression rda present", p))
+    }
   }
 }
 
@@ -95,11 +108,12 @@ validate_one <- function(cfg, prefix = "") {
     return(invisible(NULL))
   }
 
-  if (!is.null(cfg$project)) {
-    check_project_data(cfg$project)
+  proj <- cfg[["project"]]
+  if (!is.null(proj) && is.character(proj) && any(nzchar(proj))) {
+    check_project_data(proj)
   }
   if (!is.null(cfg$projects)) {
-    for (p in unlist(cfg$projects)) check_project_data(p)
+    check_project_data(cfg$projects)
   }
   check_file(cfg$signature_file, "signature_file")
   check_file(cfg$input_deg, "input_deg")

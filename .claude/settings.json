@@ -22,7 +22,11 @@
       "Read(//Users/luye/**)",
       "Bash(git config *)",
       "Bash(git init *)",
-      "Bash(gh repo *)"
+      "Bash(gh repo *)",
+      "Bash(git merge *)",
+      "Bash(git checkout *)",
+      "Bash(git rm *)",
+      "Bash(bash \"/Users/luye/Library/Mobile Documents/com~apple~CloudDocs/Projects/TCGA/tcga_toolkit/tests/run_all.sh\")"
     ],
     "additionalDirectories": [
       "/tmp",
