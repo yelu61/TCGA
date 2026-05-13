@@ -1,0 +1,7 @@
+{
+  "task": "cohort_qc",
+  "task_id": "brca-qc",
+  "project": "TCGA-BRCA",
+  "outlier_sd": 3,
+  "min_library_size": 1000000
+}

@@ -1,0 +1,6 @@
+{
+  "task": "drug_response",
+  "task_id": "brca-drug-gdsc2",
+  "project": "TCGA-BRCA",
+  "drug_set": "GDSC2"
+}

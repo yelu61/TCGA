@@ -1,0 +1,11 @@
+{
+  "task": "render_report",
+  "task_id": "fa-quarto-report",
+  "format": "quarto",
+  "output_formats": ["html", "pdf"],
+  "title": "Fanconi anaemia signature: TCGA-BRCA report",
+  "run_dirs": [
+    "tcga_runs/20260512-152923-mybl2-fa-screenshot",
+    "tcga_runs/20260512-153027-mybl2-fa-kegg"
+  ]
+}

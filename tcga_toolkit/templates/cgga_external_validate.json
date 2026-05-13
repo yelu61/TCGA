@@ -1,0 +1,8 @@
+{
+  "task": "external_validate",
+  "task_id": "cgga-validate",
+  "cohort_name": "CGGA",
+  "expression_file": "1-Input/external/CGGA_expression.tsv",
+  "clinical_file": "1-Input/external/CGGA_clinical.tsv",
+  "weight_file": "tcga_runs/20260512-153027-brca-fa-lasso-cox/results/TCGA-BRCA_prognostic_coefficients.csv"
+}

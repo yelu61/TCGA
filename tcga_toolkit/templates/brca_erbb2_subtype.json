@@ -1,0 +1,7 @@
+{
+  "task": "subtype_analysis",
+  "task_id": "brca-erbb2-subtype",
+  "project": "TCGA-BRCA",
+  "gene": "ERBB2",
+  "subtype_column": "Subtype_Selected"
+}

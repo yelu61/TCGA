@@ -1,0 +1,11 @@
+{
+  "task": "gene_correlation_heatmap",
+  "task_id": "mybl2-fa-screenshot",
+  "target_gene": "MYBL2",
+  "gene_list_file": "tcga_toolkit/templates/fa_screenshot_genes.txt",
+  "gene_column": "gene",
+  "method": "pearson",
+  "sample_filter": [
+    "Tumor"
+  ]
+}

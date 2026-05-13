@@ -1,0 +1,15 @@
+{
+  "task": "gene_correlation_heatmap",
+  "task_id": "mybl2-dna-repair-correlation",
+  "target_gene": "MYBL2",
+  "gene_list_file": "Human DNA Repair Genes.xlsx",
+  "gene_column": "Gene Name",
+  "method": "pearson",
+  "transpose_heatmap": true,
+  "cluster_rows": false,
+  "cluster_columns": false,
+  "color_scheme": "red_blue",
+  "sample_filter": [
+    "Tumor"
+  ]
+}

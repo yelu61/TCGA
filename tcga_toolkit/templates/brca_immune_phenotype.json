@@ -1,0 +1,7 @@
+{
+  "task": "immune_phenotype",
+  "task_id": "brca-immune-phenotype",
+  "project": "TCGA-BRCA",
+  "tme_methods": ["estimate", "cibersort"],
+  "perm": 100
+}

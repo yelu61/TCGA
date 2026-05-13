@@ -1,0 +1,8 @@
+{
+  "task": "cnv_summary",
+  "task_id": "brca-cnv",
+  "project": "TCGA-BRCA",
+  "top_n": 25,
+  "amp_threshold": 0.3,
+  "del_threshold": -0.3
+}

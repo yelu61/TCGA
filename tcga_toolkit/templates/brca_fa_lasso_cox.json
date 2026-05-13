@@ -1,0 +1,10 @@
+{
+  "task": "prognostic_model",
+  "task_id": "brca-fa-lasso-cox",
+  "project": "TCGA-BRCA",
+  "method": "lasso_cox",
+  "signature_file": "tcga_toolkit/templates/fa_kegg_hsa03460_genes.txt",
+  "test_fraction": 0.3,
+  "seed": 20260512,
+  "time_points": [365, 1095, 1825]
+}

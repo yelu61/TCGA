@@ -1,0 +1,73 @@
+# --- Bulk data (never commit) ---
+0-Data/
+GDCdata/
+GTEX/
+1-Input/Homo-*-gmts.txt
+1-Input/*.rda
+1-Input/*.Rdata
+1-Input/*.tsv
+1-Input/*.csv
+1-Input/external/
+
+# --- Third-party gene lists / proprietary refs ---
+Human DNA Repair Genes.xlsx
+
+# --- Toolkit runtime / outputs (research artefacts may be sensitive) ---
+.tcga_cache/
+2-Output/
+
+# tcga_runs/ contains per-task outputs tied to specific analysis stages;
+# they change frequently and are not meant to be version-controlled.
+tcga_runs/
+
+# --- tcga_toolkit/ — when wired as a git submodule, git tracks it
+# automatically. Until then, ignore the working copy so you can pull the
+# canonical version from the public repo. Uncomment if you want a
+# local-only copy committed instead.
+# tcga_toolkit/
+
+# --- Local-only Claude / editor state ---
+.claude/settings.local.json
+.claude/skills/
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# --- macOS metadata ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+
+# --- R artefacts ---
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- Large binary blobs (project-wide safety net) ---
+*.rda
+*.rds
+*.Rdata
+*.h5
+*.h5ad
+*.parquet
+*.bam
+*.bai
+*.vcf
+*.vcf.gz
+
+# --- Exceptions: research artefacts and templates you DO want tracked ---
+!notebooks/*.ipynb

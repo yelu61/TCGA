@@ -1,0 +1,5 @@
+{
+  "task": "prepare_bulk_rna",
+  "task_id": "prepare-target-os",
+  "project": "TARGET-OS"
+}

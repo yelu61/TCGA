@@ -1,0 +1,6 @@
+{
+  "task": "maf_summary",
+  "task_id": "brca-maf-summary",
+  "project": "TCGA-BRCA",
+  "top_n": 20
+}

@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F',' '$1==\"\\\\\"BRCA1\\\\\"\"' tcga_runs/20260512-152923-mybl2-fa-screenshot/results/MYBL2_fa_hr_per_project.csv)",
+      "Bash(awk -F',' '$1==\"\\\\\"UBE2T\\\\\"\"' tcga_runs/20260512-152923-mybl2-fa-screenshot/results/MYBL2_fa_hr_per_project.csv)",
+      "Bash(python3 -c ' *)",
+      "Read(//Users/luye/.claude/**)",
+      "Edit(~/.claude/skills/tcga-rna-analysis/**)",
+      "Bash(bash tcga_toolkit/tests/run_all.sh)",
+      "Bash(cd /tmp/tcga-toolkit-clean/tcga_toolkit/templates && rm -f mybl2_*.json mybl2_*.txt fa_*.json fa_*.txt brca_fa_lasso_cox.json cgga_external_validate.json && ls *.json *.txt *.tsv 2>/dev/null | sort)",
+      "Bash(sed -i '' \"s|<YOUR-HANDLE>|yelu61|g\" README.md)",
+      "Bash(sed -i '' \"s|yelu61/tcga-toolkit|yelu61/TCGA|g\" README.md)",
+      "Bash(git update-ref *)",
+      "Bash(rm tcga_toolkit/scripts/enhance_correlation_heatmap.R tcga_toolkit/scripts/enhance_correlation_thresholds.R tcga_toolkit/scripts/enhance_fa_survival.R)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-tree *)",
+      "Bash(find ~/Projects -maxdepth 2 -name \".git\" -type d 2>/dev/null | head -20; find ~/tcga* ~/TCGA* -maxdepth 2 -name \".git\" -type d 2>/dev/null | head -10)",
+      "Read(//Users/luye/**)",
+      "Bash(git config *)",
+      "Bash(git init *)",
+      "Bash(gh repo *)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/private/tmp",
+      "/private/tmp/tcga-toolkit-clean/tcga_toolkit/templates"
+    ]
+  }
+}

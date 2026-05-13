@@ -1,0 +1,12 @@
+{
+  "task": "pan_cancer_expression",
+  "task_id": "pancancer-tp53-expression",
+  "gene": "TP53",
+  "projects": [
+    "TCGA-BRCA",
+    "TCGA-LUAD",
+    "TCGA-KIRC",
+    "TCGA-COAD",
+    "TCGA-HNSC"
+  ]
+}

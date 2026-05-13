@@ -1,0 +1,8 @@
+{
+  "task": "render_report",
+  "task_id": "recent-runs-summary",
+  "run_dirs": [
+    "tcga_runs/20260416-110535-target-os-metas-vs-nonmetas",
+    "tcga_runs/20260416-110723-test-brca-tp53-clinical"
+  ]
+}

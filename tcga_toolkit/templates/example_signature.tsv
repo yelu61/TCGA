@@ -1,0 +1,6 @@
+gene	direction	weight
+CD24	up	1
+EPCAM	up	1
+KRT19	up	1
+CXCL8	down	1
+COL1A1	down	1
