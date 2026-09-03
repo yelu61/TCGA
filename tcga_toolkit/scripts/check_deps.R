@@ -52,6 +52,9 @@ dep_specs <- list(
   gene_correlation_heatmap = list(
     cran = c("readxl", "pheatmap")
   ),
+  gene_pair_coexpression = list(
+    cran = c("survival", "survminer")
+  ),
   pipeline = list(),
   render_report = list(),
   maf_summary = list(

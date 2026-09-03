@@ -1,0 +1,28 @@
+{
+  "task": "gene_pair_coexpression",
+  "task_id": "pancancer-lrrc15-ceacam6-coexpression",
+  "genes": [
+    "LRRC15",
+    "CEACAM6"
+  ],
+  "sample_filter": [
+    "Tumor"
+  ],
+  "cutpoint": "median",
+  "sensitivity_thresholds": [
+    "z_gt_0",
+    "z_ge_2"
+  ],
+  "correlation_method": "spearman",
+  "covariates": [
+    "age_at_index",
+    "gender",
+    "ajcc_pathologic_stage"
+  ],
+  "min_expression_tumor_n": 10,
+  "min_expression_normal_n": 5,
+  "expression_p_adjust_method": "BH",
+  "min_survival_n": 30,
+  "min_events": 10,
+  "min_group_n": 5
+}

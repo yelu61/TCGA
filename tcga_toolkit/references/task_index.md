@@ -139,6 +139,55 @@ Pearson/Spearman correlation between one target gene and a gene list
   `spearman`), `sample_filter` (e.g. `c("Tumor")`)
 - outputs: per-pair correlation CSV, project x gene heatmap.
 
+## gene_pair_coexpression
+
+Paired pan-cancer expression, coexpression grouping and per-cancer overall
+survival models for two genes.
+
+- required: `genes` (exactly two gene symbols)
+- optional: `projects` (defaults to all local `TCGA-*` projects),
+  `sample_filter` (default `["Tumor"]`), `cutpoint` (currently `median`),
+  `sensitivity_thresholds` (default `["z_gt_0","z_ge_2"]`),
+  `correlation_method` (default `spearman`), `covariates` (default
+  `["age_at_index","gender","ajcc_pathologic_stage"]`),
+  `min_expression_tumor_n` (default 10), `min_expression_normal_n`
+  (default 5), `expression_p_adjust_method` (default `BH`),
+  `min_survival_n` (default 30), `min_events` (default 10),
+  `min_group_n` (default 5), `single_gene_binary_cox` (default `true`,
+  adds median-split High/Low Cox models matching the KM grouping),
+  `gtex_augment_normal` (default `false`; extend the Normal group with
+  GTEx matched-tissue samples from `GTEX/` via `samplepair.txt`),
+  `apply_cohort_filter` (default `false`; restrict ALL analyses to
+  projects passing `filter_min_tumor_n` (default 100) and
+  `filter_min_normal_n` (default 10, TCGA + GTEx combined)),
+  `degenerate_cutoff_epsilon` (default 0.1; median cutoffs at or below
+  this value flag the cancer type as degenerate on plots and in
+  `*_degenerate_group_flags.csv`)
+- outputs: per-sample paired expression, long expression table, project
+  summary, tumour/normal expression group summary, tumour/normal Wilcoxon
+  stats (combined normal plus TCGA-only sensitivity columns
+  `p_value_tcga_only`/`fdr_tcga_only`), coexpression group counts,
+  correlation summary, Cox model table, double-high survival summary,
+  model status, KM plot manifest, cohort filter audit, degenerate group
+  flags, warnings, paired expression boxplot, per-gene tumour/normal
+  boxplots with FDR stars and rank-biserial effect labels, tumour scatter
+  facets, coexpression proportion plot, double-high forest plot,
+  per-gene single-gene Cox forest plots (continuous and binary,
+  unadjusted + adjusted), OS FDR heatmap and double-high risk bubble
+  plot.
+- gotchas: survival models are fit independently within each cancer type and
+  never pooled across cancer types. The `z_gt_0` and `z_ge_2` sensitivity
+  groups use local tumour-reference z-scores from `log2(TPM+1)`, not
+  cBioPortal's diploid-CNA reference z-score. Tumour/normal expression tests
+  are filtered by `min_expression_tumor_n` and `min_expression_normal_n`;
+  failing projects are recorded in the stats table but remain eligible for
+  tumour-only coexpression and survival analyses. With
+  `gtex_augment_normal: true`, TCGA (GDC STAR-TPM) and GTEx (RSEM-TPM)
+  quantification pipelines differ and are not batch-corrected — treat
+  augmented tumour/normal differences with caution and check the TCGA-only
+  sensitivity columns. GTEx files may be iCloud-evicted; materialize them
+  first (`brctl download GTEX/`).
+
 ## pipeline
 
 Run several tasks sequentially with output passing.
@@ -174,8 +223,35 @@ self-contained `report.html` (markdown + tables + base64-embedded PNGs).
 maftools-based summary of mutation burden, oncoplot and top genes.
 
 - required: `project`
-- optional: `top_n` (default 20)
-- outputs: per-gene mutation frequency CSV, oncoplot PDF/PNG.
+- optional: `top_n` (default 20; accepts a vector, e.g. `[25, 50]`, emitting
+  one oncoplot per value); `clinical_columns` (character vector of
+  columns to draw as oncoplot annotation tracks; when set, an extra
+  clinically-annotated oncoplot is produced and samples are sorted by
+  annotation). In addition to raw `clinical_patient_*` columns, the following
+  derived columns are available: `stage_merged` (AJCC sub-stages collapsed to
+  Stage I-IV), `grade_merged` (G1-G4, GX→NA), `age_group` (binned by
+  `age_breaks`), `molecular_subtype` (from `0-Data/PanCancer_subtypes.rda`);
+  `group_column` (annotation used for sorting, default first of
+  `clinical_columns`); `within_group_order` (`"annotation"` default = maftools
+  sortByAnnotation, or `"tmb"` = order groups by descending median mutation
+  burden and samples by descending burden within each group, giving a clean
+  waterfall look); `age_breaks` (numeric cut points for `age_group`,
+  default `[50, 65]` → `<=50` / `51-65` / `>65`); `lof_focus` (default `false`
+  — also emit a loss-of-function subset oncoplot + frequency table);
+  `lof_classes` (default
+  `["Nonsense_Mutation","Frame_Shift_Del","Frame_Shift_Ins","Splice_Site"]`);
+  `lof_top_n` (default `top_n`; also accepts a vector).
+- outputs: per-gene mutation frequency CSV, oncoplot PDF/PNG. When
+  `clinical_columns` is set: `<project>_oncoplot_clinical_top<N>.pdf/png` and
+  `<project>_oncoplot_clinical_annotation.csv`. When `lof_focus`:
+  `<project>_oncoplot_LOF_top<M>.pdf/png` and
+  `<project>_lof_gene_mutation_frequency.csv`.
+- gotchas: clinical annotation is keyed by the 12-character patient barcode
+  (`read.maf(isTCGA = TRUE)` truncates `Tumor_Sample_Barcode` to the patient
+  code) matched to `bcr_patient_barcode` in the project's `clinical_patient_*`
+  table; bracketed GDC placeholders (`[Not Available]`, ...) are treated as NA.
+  `molecular_subtype` requires `0-Data/PanCancer_subtypes.rda` (returns NA for
+  unmatched samples).
 
 ## mutation_survival
 

@@ -85,6 +85,11 @@ tasks <- list(
     required = c("target_gene", "gene_list_file"),
     optional = c("sheet", "gene_column", "projects", "method", "sample_filter")
   ),
+  gene_pair_coexpression = list(
+    summary = "Paired pan-cancer expression, coexpression grouping and per-cancer OS models for two genes.",
+    required = "genes",
+    optional = c("projects", "sample_filter", "cutpoint", "sensitivity_thresholds", "correlation_method", "covariates", "min_expression_tumor_n", "min_expression_normal_n", "expression_p_adjust_method", "min_survival_n", "min_events", "min_group_n")
+  ),
   pipeline = list(
     summary = "Run a sequence of tasks; later steps can reference earlier outputs.",
     required = "steps",
@@ -96,9 +101,9 @@ tasks <- list(
     optional = character()
   ),
   maf_summary = list(
-    summary = "Mutation burden, oncoplot and top-mutated gene frequencies from project MAF.",
+    summary = "Mutation burden, oncoplot (optionally with clinical annotation tracks, derived clean clinical columns and molecular subtype) and top-mutated gene frequencies from project MAF, with optional loss-of-function focus.",
     required = "project",
-    optional = "top_n"
+    optional = c("top_n", "clinical_columns", "group_column", "within_group_order", "age_breaks", "lof_focus", "lof_classes", "lof_top_n")
   ),
   mutation_survival = list(
     summary = "Survival comparison between mutant and wildtype samples for a single gene.",

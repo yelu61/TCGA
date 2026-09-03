@@ -1,0 +1,19 @@
+{
+  "task": "maf_summary",
+  "task_id": "stad-maf-landscape",
+  "project": "TCGA-STAD",
+  "top_n": [25, 50],
+  "clinical_columns": [
+    "molecular_subtype",
+    "stage_merged",
+    "grade_merged",
+    "age_group",
+    "gender"
+  ],
+  "group_column": "molecular_subtype",
+  "within_group_order": "tmb",
+  "age_breaks": [50, 65],
+  "lof_focus": true,
+  "lof_classes": ["Nonsense_Mutation", "Frame_Shift_Del", "Frame_Shift_Ins", "Splice_Site"],
+  "lof_top_n": [25, 50]
+}

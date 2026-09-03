@@ -35,9 +35,9 @@ known_tasks <- c(
   "run_clinical_assoc", "run_tme", "run_gtex_compare",
   "validate_sc_signatures", "pan_cancer_expression", "stage_analysis",
   "survival_map", "subtype_analysis", "gene_correlation_heatmap",
-  "pipeline", "render_report", "maf_summary", "mutation_survival",
-  "prognostic_model", "ssgsea_score", "tmb_analysis", "cohort_qc",
-  "cnv_summary", "methylation_diff", "external_validate",
+  "gene_pair_coexpression", "pipeline", "render_report", "maf_summary",
+  "mutation_survival", "prognostic_model", "ssgsea_score", "tmb_analysis",
+  "cohort_qc", "cnv_summary", "methylation_diff", "external_validate",
   "immune_phenotype", "wgcna_modules", "drug_response"
 )
 

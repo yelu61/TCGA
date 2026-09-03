@@ -139,6 +139,95 @@ project_files <- function(project) {
   )
 }
 
+# Extract the per-patient clinical table from a project's clinical bundle.
+# The clinical .rda stores a named list of BCR tables (clinical_patient_*,
+# clinical_follow_up_*, clinical_drug_*, ...). load_rdata_file() may return
+# that list directly (single object) or wrapped in a named list of objects;
+# handle both and return the clinical_patient_* data.frame.
+get_patient_clinical <- function(project) {
+  files <- project_files(project)
+  if (!file.exists(files$clinical)) {
+    fail("Missing clinical file for %s: %s", project, files$clinical)
+  }
+  clin <- load_rdata_file(files$clinical)
+  # Unwrap a single named object that is itself a list of tables.
+  if (is.list(clin) && !is.data.frame(clin) && length(clin) == 1L && is.list(clin[[1L]]) && !is.data.frame(clin[[1L]])) {
+    clin <- clin[[1L]]
+  }
+  patient_keys <- grep("^clinical_patient_", names(clin), value = TRUE)
+  if (!length(patient_keys)) {
+    fail("No clinical_patient_* table found in clinical bundle for %s.", project)
+  }
+  patient <- clin[[patient_keys[[1L]]]]
+  if (!is.data.frame(patient)) {
+    fail("clinical_patient table for %s is not a data.frame.", project)
+  }
+  as.data.frame(patient, stringsAsFactors = FALSE)
+}
+
+# Look up per-patient molecular subtypes for a project from the local
+# Pan-Cancer subtype table (0-Data/PanCancer_subtypes.rda). Returns a
+# data.frame with bcr_patient_barcode + molecular_subtype, or NULL when the
+# file or the project's rows are absent.
+get_project_subtypes <- function(project, subtype_col = "Subtype_other") {
+  path <- file.path(project_root(), "0-Data", "PanCancer_subtypes.rda")
+  if (!file.exists(path)) {
+    return(NULL)
+  }
+  sub <- as.data.frame(load_rdata_file(path), stringsAsFactors = FALSE)
+  needed <- c("pan.samplesID", "cancer.type", subtype_col)
+  if (!all(needed %in% colnames(sub))) {
+    return(NULL)
+  }
+  cancer_type <- sub("^(TCGA|TARGET)-", "", project)
+  sub <- sub[sub$cancer.type == cancer_type, , drop = FALSE]
+  if (!nrow(sub)) {
+    return(NULL)
+  }
+  out <- data.frame(
+    bcr_patient_barcode = as.character(sub$pan.samplesID),
+    molecular_subtype = as.character(sub[[subtype_col]]),
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$molecular_subtype) & nzchar(out$molecular_subtype), , drop = FALSE]
+  if (!nrow(out)) {
+    return(NULL)
+  }
+  out
+}
+
+# Collapse AJCC sub-stages to the main stage groups. Handles values like
+# "Stage IIA", "Stage IIIC", "Stage IV"; bracketed placeholders become NA.
+merge_clinical_stage <- function(x) {
+  x <- as.character(x)
+  out <- rep(NA_character_, length(x))
+  out[grepl("Stage IV", x)] <- "Stage IV"
+  out[is.na(out) & grepl("Stage III", x)] <- "Stage III"
+  out[is.na(out) & grepl("Stage II", x)] <- "Stage II"
+  out[is.na(out) & grepl("Stage I", x)] <- "Stage I"
+  factor(out, levels = c("Stage I", "Stage II", "Stage III", "Stage IV"))
+}
+
+# Keep only clean histologic grades (G1-G4); GX / header artefacts become NA.
+merge_clinical_grade <- function(x) {
+  x <- as.character(x)
+  out <- ifelse(x %in% c("G1", "G2", "G3", "G4"), x, NA_character_)
+  factor(out, levels = c("G1", "G2", "G3", "G4"))
+}
+
+# Bin a numeric-ish vector into age groups, e.g. breaks = c(50, 65) gives
+# "<=50", "51-65", ">65". Non-numeric values become NA.
+bin_age_group <- function(x, breaks = c(50, 65)) {
+  a <- suppressWarnings(as.numeric(as.character(x)))
+  breaks <- sort(unique(as.numeric(breaks)))
+  labels <- c(
+    paste0("<=", breaks[1L]),
+    if (length(breaks) > 1L) paste0(breaks[-length(breaks)] + 1, "-", breaks[-1L]),
+    paste0(">", breaks[length(breaks)])
+  )
+  cut(a, breaks = c(-Inf, breaks, Inf), labels = labels, right = TRUE)
+}
+
 available_projects <- function(include_target = TRUE) {
   data_dir <- file.path(project_root(), "0-Data")
   projects <- sort(unique(gsub("_(mrna|clinical|maf)\\.rda$", "", list.files(data_dir, pattern = "_(mrna|clinical|maf)\\.rda$"))))
@@ -1060,6 +1149,7 @@ validate_config <- function(task, config) {
     survival_map = if (is.null(config$gene) && is.null(config$signature_file)) "gene_or_signature_file" else NULL,
     subtype_analysis = if (is.null(config$gene) && is.null(config$signature_file)) c("project", "gene_or_signature_file") else "project",
     gene_correlation_heatmap = c("target_gene", "gene_list_file"),
+    gene_pair_coexpression = "genes",
     pipeline = "steps",
     render_report = "run_dirs",
     maf_summary = "project",
@@ -1096,6 +1186,32 @@ validate_config <- function(task, config) {
     }
     if (length(missing)) {
       fail("Task '%s' is missing required config fields: %s", task, paste(missing, collapse = ", "))
+    }
+  }
+  if (task == "gene_pair_coexpression") {
+    genes <- as.character(unlist(config$genes %||% character()))
+    genes <- genes[nzchar(genes)]
+    if (length(genes) != 2L) {
+      fail("Task 'gene_pair_coexpression' requires exactly two genes.")
+    }
+    for (key in c("gtex_augment_normal", "apply_cohort_filter", "single_gene_binary_cox")) {
+      if (!is.null(config[[key]]) && (length(config[[key]]) != 1L || !is.logical(config[[key]]))) {
+        fail("Task 'gene_pair_coexpression' config field '%s' must be a single true/false value.", key)
+      }
+    }
+    for (key in c("filter_min_tumor_n", "filter_min_normal_n")) {
+      if (!is.null(config[[key]])) {
+        value <- suppressWarnings(as.integer(config[[key]]))
+        if (is.na(value) || value < 1L) {
+          fail("Task 'gene_pair_coexpression' config field '%s' must be an integer >= 1.", key)
+        }
+      }
+    }
+    if (!is.null(config$degenerate_cutoff_epsilon)) {
+      value <- suppressWarnings(as.numeric(config$degenerate_cutoff_epsilon))
+      if (is.na(value) || value < 0) {
+        fail("Task 'gene_pair_coexpression' config field 'degenerate_cutoff_epsilon' must be a number >= 0.")
+      }
     }
   }
   invisible(TRUE)

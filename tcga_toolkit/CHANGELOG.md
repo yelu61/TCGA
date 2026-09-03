@@ -2,6 +2,42 @@
 
 All notable changes to the TCGA toolkit are tracked here.
 
+## Unreleased
+
+### Added — expression and survival
+
+- `gene_pair_coexpression`: paired pan-cancer expression, tumour-only
+  coexpression grouping, per-cancer Cox/KM survival models, and combined
+  expression/coexpression/survival visualizations for two genes. New template
+  `templates/pancancer_lrrc15_ceacam6_gene_pair_coexpression.json`.
+- `gene_pair_coexpression`: per-gene tumour/normal expression boxplots with
+  FDR star labels and rank-biserial effect sizes, plus filtered
+  tumour/normal expression summary tables. The expression comparison filter is
+  independent of tumour-only coexpression and survival eligibility.
+
+## 0.4.0 — 2026-08-18
+
+### Added — mutation
+
+- `maf_summary`: optional clinically-annotated oncoplot via `clinical_columns`
+  / `group_column` (annotation tracks drawn from the project's
+  `clinical_patient_*` table, keyed by patient barcode), and an optional
+  loss-of-function focus via `lof_focus` / `lof_classes` / `lof_top_n`
+  (LoF-subset oncoplot + `*_lof_gene_mutation_frequency.csv`). New helper
+  `get_patient_clinical()` in `common.R`. Backwards compatible: configs
+  without the new fields behave as before. New template
+  `templates/stad_maf_summary.json`.
+- `maf_summary`: derived clinical annotation columns `stage_merged`,
+  `grade_merged`, `age_group` (binned via `age_breaks`), and
+  `molecular_subtype` (from `0-Data/PanCancer_subtypes.rda`); new helpers
+  `get_project_subtypes()`, `merge_clinical_stage()`, `merge_clinical_grade()`,
+  `bin_age_group()` in `common.R`. Wider oncoplot canvas so side legends and
+  annotation labels are not clipped. `top_n` / `lof_top_n` accept a vector
+  (e.g. `[25, 50]`) to emit one oncoplot per value. New `within_group_order`
+  option: `"tmb"` orders oncoplot groups by descending median mutation burden
+  and samples by descending burden within each group (clean waterfall layout),
+  vs the default `"annotation"` (maftools sortByAnnotation).
+
 ## 0.3.0 — 2026-05-13
 
 ### Added — analysis coverage

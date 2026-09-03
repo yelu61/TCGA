@@ -11,10 +11,11 @@ Required top-level field:
 - `task`: one of `audit_data`, `prepare_bulk_rna`, `run_deg`, `run_enrichment`,
   `run_clinical_assoc`, `run_tme`, `run_gtex_compare`, `validate_sc_signatures`,
   `pan_cancer_expression`, `stage_analysis`, `survival_map`, `subtype_analysis`,
-  `gene_correlation_heatmap`, `pipeline`, `render_report`, `maf_summary`,
-  `mutation_survival`, `prognostic_model`, `ssgsea_score`, `tmb_analysis`,
-  `cohort_qc`, `cnv_summary`, `methylation_diff`, `external_validate`,
-  `immune_phenotype`, `wgcna_modules`, `drug_response`.
+  `gene_correlation_heatmap`, `gene_pair_coexpression`, `pipeline`,
+  `render_report`, `maf_summary`, `mutation_survival`, `prognostic_model`,
+  `ssgsea_score`, `tmb_analysis`, `cohort_qc`, `cnv_summary`,
+  `methylation_diff`, `external_validate`, `immune_phenotype`,
+  `wgcna_modules`, `drug_response`.
 
 Common optional fields:
 
@@ -46,13 +47,22 @@ For a fuller description of each task and its config schema, see
   optional `subtype_column`
 - `gene_correlation_heatmap`: requires `target_gene`, `gene_list_file`;
   optional `sheet`, `gene_column`, `projects`, `method`, `sample_filter`
+- `gene_pair_coexpression`: requires `genes` (exactly two gene symbols);
+  optional `projects`, `sample_filter`, `cutpoint`, `sensitivity_thresholds`,
+  `correlation_method`, `covariates`, `min_expression_tumor_n`,
+  `min_expression_normal_n`, `expression_p_adjust_method`,
+  `min_survival_n`, `min_events`, `min_group_n`
 - `pipeline`: requires `steps` (array of task configs); each step can
   reference previous step outputs via `{{stepN.run_dir}}`,
   `{{stepN.results_dir}}`, `{{stepN.plots_dir}}`, `{{stepN.objects_dir}}`,
   `{{stepN.task_id}}`, or `{{stepN.glob:*_deg.csv}}`
 - `render_report`: requires `run_dirs` (array of run directory paths);
   generates a unified `report.html`
-- `maf_summary`: requires `project`; optional `top_n` (default 20)
+- `maf_summary`: requires `project`; optional `top_n` (default 20),
+  `clinical_columns` (oncoplot annotation tracks; supports derived columns
+  `stage_merged`, `grade_merged`, `age_group`, `molecular_subtype`),
+  `group_column`, `age_breaks`, `lof_focus` (loss-of-function subset oncoplot
+  + frequency table), `lof_classes`, `lof_top_n`
 - `mutation_survival`: requires `project` and `gene`
 - `prognostic_model`: requires `project` and one of `feature_genes`,
   `signature_file`, or `gene_list_file`; optional `method` (`lasso_cox` |

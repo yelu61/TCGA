@@ -47,6 +47,7 @@ source(file.path(script_dir, "task_stage_analysis.R"))
 source(file.path(script_dir, "task_survival_map.R"))
 source(file.path(script_dir, "task_subtype_analysis.R"))
 source(file.path(script_dir, "task_gene_correlation_heatmap.R"))
+source(file.path(script_dir, "task_gene_pair_coexpression.R"))
 source(file.path(script_dir, "task_pipeline.R"))
 source(file.path(script_dir, "task_render_report.R"))
 source(file.path(script_dir, "task_maf_summary.R"))
@@ -80,6 +81,7 @@ dispatch <- list(
   survival_map = task_survival_map,
   subtype_analysis = task_subtype_analysis,
   gene_correlation_heatmap = task_gene_correlation_heatmap,
+  gene_pair_coexpression = task_gene_pair_coexpression,
   pipeline = task_pipeline,
   render_report = task_render_report,
   maf_summary = task_maf_summary,
