@@ -17,6 +17,9 @@ echo
 echo "== test_dispatch.R =="
 Rscript tests/test_dispatch.R || status=1
 echo
+echo "== test_inference_guards.R =="
+Rscript tests/test_inference_guards.R || status=1
+echo
 echo "== test_python_adapter.py =="
 if command -v python3 >/dev/null 2>&1; then
   python3 tests/test_python_adapter.py || status=1

@@ -54,6 +54,7 @@ task_run_gtex_compare <- function(config, ctx) {
     ctx,
     sprintf("GTEx Compare for %s in %s", gene, project),
     c(
+      "**DESCRIPTIVE ONLY**: TCGA and GTEx TPM values are compared without cross-dataset normalization or batch modelling. Do not interpret group differences inferentially (no test is performed; medians/means only).",
       sprintf("- GTEx tissues used: `%s`", paste(target_tissues, collapse = ", ")),
       sprintf("- TCGA samples summarized: `%s`", nrow(tcga_df)),
       sprintf("- GTEx samples summarized: `%s`", nrow(gtex_df)),

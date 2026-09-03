@@ -15,7 +15,39 @@ task_run_deg <- function(config, ctx) {
   clinical <- clinical[match(colnames(data$counts), clinical$sample_id), , drop = FALSE]
   keep <- !is.na(clinical[[group_column]]) & as.character(clinical[[group_column]]) %in% c(numerator, denominator)
   clinical <- clinical[keep, , drop = FALSE]
-  counts <- round(data$counts[, clinical$sample_id, drop = FALSE])
+
+  # Patient-level dedup: one sample per patient so replicate aliquots of the
+  # same tumour are not treated as independent biological replicates.
+  if (isTRUE(config$dedup_patient %||% TRUE) && "patient_short" %in% colnames(clinical)) {
+    dup_patient <- duplicated(clinical$patient_short)
+    if (any(dup_patient)) {
+      info("run_deg: dropping %s duplicate-patient sample(s), keeping first per patient.", sum(dup_patient))
+      clinical <- clinical[!dup_patient, , drop = FALSE]
+    }
+  }
+
+  counts <- data$counts[, clinical$sample_id, drop = FALSE]
+  # Previously non-integer input (e.g. TPM) was silently round()ed, which
+  # fabricates count data; refuse instead.
+  assert_integer_counts(counts, sprintf("run_deg counts matrix for %s", project))
+
+  # Optional design covariates / explicit design formula.
+  covariates <- unlist(config$covariates %||% character())
+  missing_cov <- setdiff(covariates, colnames(clinical))
+  if (length(missing_cov)) {
+    fail("run_deg covariates not found in clinical table: %s", paste(missing_cov, collapse = ", "))
+  }
+  for (cv in covariates) {
+    if (!is.numeric(clinical[[cv]])) clinical[[cv]] <- factor(as.character(clinical[[cv]]))
+  }
+  if (length(covariates)) {
+    complete_cov <- stats::complete.cases(clinical[, covariates, drop = FALSE])
+    if (any(!complete_cov)) {
+      info("run_deg: dropping %s sample(s) with NA covariate values.", sum(!complete_cov))
+      clinical <- clinical[complete_cov, , drop = FALSE]
+    }
+  }
+  counts <- counts[, clinical$sample_id, drop = FALSE]
 
   gene_keep <- rowSums(counts >= min_count) >= ceiling(ncol(counts) * min_fraction)
   counts <- counts[gene_keep, , drop = FALSE]
@@ -25,7 +57,18 @@ task_run_deg <- function(config, ctx) {
 
   clinical$condition <- factor(as.character(clinical[[group_column]]), levels = c(denominator, numerator))
   rownames(clinical) <- clinical$sample_id
-  dds <- DESeq2::DESeqDataSetFromMatrix(countData = counts, colData = clinical, design = ~ condition)
+  design_formula <- if (!is.null(config$design_formula)) {
+    stats::as.formula(config$design_formula)
+  } else if (length(covariates)) {
+    stats::as.formula(paste("~", paste(covariates, collapse = " + "), "+ condition"))
+  } else {
+    ~ condition
+  }
+  missing_terms <- setdiff(all.vars(design_formula), colnames(clinical))
+  if (length(missing_terms)) {
+    fail("design_formula variables not found in clinical table: %s", paste(missing_terms, collapse = ", "))
+  }
+  dds <- DESeq2::DESeqDataSetFromMatrix(countData = counts, colData = clinical, design = design_formula)
   dds <- DESeq2::DESeq(dds, quiet = TRUE)
   res <- as.data.frame(DESeq2::results(dds, contrast = c("condition", numerator, denominator)))
   res$feature_id <- rownames(res)
@@ -48,6 +91,8 @@ task_run_deg <- function(config, ctx) {
     sprintf("DEG: %s %s vs %s", project, numerator, denominator),
     c(
       sprintf("- Samples used: `%s`", nrow(clinical)),
+      sprintf("- Design: `%s`", deparse(design_formula)),
+      sprintf("- Patient-level dedup: `%s`", isTRUE(config$dedup_patient %||% TRUE)),
       sprintf("- Genes tested: `%s`", nrow(res)),
       sprintf("- Significant genes (padj < %s): `%s`", config$padj_cutoff %||% 0.05, nrow(sig)),
       "",

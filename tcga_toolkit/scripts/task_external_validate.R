@@ -10,6 +10,13 @@ task_external_validate <- function(config, ctx) {
     sig <- read_marker_table(config$signature_file)
     features <- unique(sig$gene)
   }
+  # Locked model metadata from a prognostic_model run: features, coefficients,
+  # transform and cutoff are reused as-is instead of being re-derived on the
+  # external cohort (re-deriving invalidates the validation claim).
+  model_meta <- NULL
+  if (!is.null(config$model_meta_file) && file.exists(config$model_meta_file)) {
+    model_meta <- jsonlite::read_json(config$model_meta_file, simplifyVector = TRUE)
+  }
   weights <- NULL
   if (!is.null(config$weight_file) && nzchar(config$weight_file) && file.exists(config$weight_file)) {
     w <- utils::read.csv(config$weight_file, stringsAsFactors = FALSE, check.names = FALSE)
@@ -20,8 +27,15 @@ task_external_validate <- function(config, ctx) {
       features <- unique(c(features, names(weights)))
     }
   }
+  if (is.null(weights) && !is.null(model_meta) && length(model_meta$coefficients)) {
+    weights <- as.numeric(unlist(model_meta$coefficients))
+    names(weights) <- names(model_meta$coefficients)
+  }
+  if (!length(features) && !is.null(model_meta) && length(model_meta$features)) {
+    features <- unlist(model_meta$features)
+  }
   if (!length(features)) {
-    fail("external_validate requires feature_genes, signature_file, or weight_file with a gene column.")
+    fail("external_validate requires feature_genes, signature_file, weight_file, or model_meta_file with features.")
   }
 
   read_matrix <- function(path) {
@@ -46,7 +60,19 @@ task_external_validate <- function(config, ctx) {
   if (anyNA(rownames(expr))) {
     fail("expression_file must use gene symbols (or IDs) as row names.")
   }
-  if (max(expr, na.rm = TRUE) > 100) {
+  # Transform: when the model metadata declares a locked transform, honour it;
+  # otherwise fall back to the scale heuristic and say so in the report.
+  transform_note <- "heuristic (max>100 -> log2(x+1))"
+  if (!is.null(model_meta) && identical(as.character(model_meta$transform), "log2p1")) {
+    if (max(expr, na.rm = TRUE) > 100) {
+      info("Applying locked transform log2(x+1) from model metadata.")
+      expr <- log2(expr + 1)
+      transform_note <- "locked from training: log2(x+1)"
+    } else {
+      info("Model metadata declares log2(x+1); external matrix already looks log-scale, using as-is.")
+      transform_note <- "locked from training: log2(x+1) (external already log-scale)"
+    }
+  } else if (max(expr, na.rm = TRUE) > 100) {
     info("Expression looks like raw TPM/counts; applying log2(x+1).")
     expr <- log2(expr + 1)
   }
@@ -107,7 +133,21 @@ task_external_validate <- function(config, ctx) {
   if (nrow(merged) < 20L) {
     fail("Only %s samples have both risk score and survival; aborting.", nrow(merged))
   }
-  cutoff <- stats::median(merged$risk_score, na.rm = TRUE)
+  # Risk grouping cutoff: locked from training (config$cutoff or model
+  # metadata) whenever the risk score is on the training scale; re-deriving a
+  # cutoff on the external cohort turns validation into exploration.
+  locked_cutoff <- suppressWarnings(as.numeric(config$cutoff %||% model_meta$cutoff %||% NA))
+  if (!is.na(locked_cutoff) && is.null(weights)) {
+    info("Ignoring locked cutoff: no locked coefficients supplied, risk score is a re-derived z-score mean.")
+    locked_cutoff <- NA_real_
+  }
+  if (!is.na(locked_cutoff)) {
+    cutoff <- locked_cutoff
+    cutoff_source <- "locked from training"
+  } else {
+    cutoff <- stats::median(merged$risk_score, na.rm = TRUE)
+    cutoff_source <- "external-cohort median (EXPLORATORY: no locked cutoff supplied)"
+  }
   merged$risk_group <- ifelse(merged$risk_score >= cutoff, "High", "Low")
 
   cox <- NULL
@@ -135,7 +175,8 @@ task_external_validate <- function(config, ctx) {
     )
     if (!is.null(km_fit)) {
       km_summary <- list(
-        median_cutoff = cutoff,
+        cutoff = cutoff,
+        cutoff_source = cutoff_source,
         n = nrow(merged),
         groups = as.list(table(merged$risk_group))
       )
@@ -177,7 +218,9 @@ task_external_validate <- function(config, ctx) {
       sprintf("- Expression matrix: `%s`", expression_file),
       sprintf("- Clinical: `%s`", clinical_file),
       sprintf("- Features requested / matched: `%s / %s`", length(features), length(matched)),
-      sprintf("- Risk derived via: `%s`", ifelse(is.null(weights), "z-score mean", "weighted sum")),
+      sprintf("- Risk derived via: `%s`", ifelse(is.null(weights), "z-score mean (re-derived on external cohort)", "locked weighted sum")),
+      sprintf("- Transform: `%s`", transform_note),
+      sprintf("- Risk cutoff: `%s` (%s)", signif(cutoff, 4), cutoff_source),
       sprintf("- Samples with survival: `%s` (events=%s)", nrow(merged), sum(merged$survival_event == 1, na.rm = TRUE)),
       sprintf("- Cox HR (95%% CI): `%s (%s - %s)` p=`%s`",
               if (!is.null(cox)) signif(cox$hazard_ratio, 3) else "NA",

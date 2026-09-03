@@ -59,13 +59,17 @@ task_prognostic_model <- function(config, ctx) {
   }
   surv_df <- data.frame(
     sample_id = clinical$sample_id,
+    patient_short = clinical$patient_short %||% clinical$sample_id,
     survival_time = time_to_death,
     survival_event = coerce_status(clinical[[cols$status]]),
     stringsAsFactors = FALSE
   )
 
   covariates <- unlist(config$covariates %||% character())
-  covariates <- covariates[covariates %in% colnames(clinical)]
+  missing_cov <- setdiff(covariates, colnames(clinical))
+  if (length(missing_cov)) {
+    fail("prognostic_model covariates not found in clinical table: %s", paste(missing_cov, collapse = ", "))
+  }
   if (length(covariates)) {
     cov_df <- clinical[, c("sample_id", covariates), drop = FALSE]
     surv_df <- merge(surv_df, cov_df, by = "sample_id", all.x = TRUE)
@@ -84,20 +88,53 @@ task_prognostic_model <- function(config, ctx) {
     fail("Only %s samples have complete survival + expression data; need at least 30.", nrow(dat))
   }
 
+  # Encode covariates so they actually enter the model: numeric covariates are
+  # used as-is; categorical covariates become dummy columns with the first
+  # level as reference. Previously covariates were merged into the survival
+  # table but silently excluded from the feature matrix.
+  covar_cols <- character()
+  if (length(covariates)) {
+    dat <- dat[stats::complete.cases(dat[, covariates, drop = FALSE]), , drop = FALSE]
+    if (nrow(dat) < 30L) {
+      fail("Only %s samples remain after dropping NA covariate values; need at least 30.", nrow(dat))
+    }
+    for (cv in covariates) {
+      v <- dat[[cv]]
+      if (is.numeric(v)) {
+        covar_cols <- c(covar_cols, cv)
+      } else {
+        f <- factor(as.character(v))
+        if (nlevels(f) < 2) {
+          info("Covariate %s has fewer than 2 levels; skipped.", cv)
+          next
+        }
+        mm <- stats::model.matrix(~ f)[, -1, drop = FALSE]
+        colnames(mm) <- paste0(cv, "__", levels(f)[-1])
+        dat <- cbind(dat, mm)
+        covar_cols <- c(covar_cols, colnames(mm))
+      }
+    }
+  }
+
   seed <- as.integer(config$seed %||% 20260512L)
   set.seed(seed)
   test_fraction <- as.numeric(config$test_fraction %||% 0.3)
   if (test_fraction <= 0 || test_fraction >= 1) test_fraction <- 0.3
-  n <- nrow(dat)
-  idx_test <- sample.int(n, size = max(5L, floor(n * test_fraction)))
-  train <- dat[-idx_test, , drop = FALSE]
-  test <- dat[idx_test, , drop = FALSE]
+  # Patient-level split: all samples of a patient stay in the same partition,
+  # so the test set cannot leak information through duplicate aliquots.
+  patients <- unique(dat$patient_short)
+  n_test_patients <- max(1L, floor(length(patients) * test_fraction))
+  test_patients <- sample(patients, size = n_test_patients)
+  while (sum(dat$patient_short %in% test_patients) < 5L && length(test_patients) < length(patients)) {
+    test_patients <- c(test_patients, sample(setdiff(patients, test_patients), 1L))
+  }
+  test <- dat[dat$patient_short %in% test_patients, , drop = FALSE]
+  train <- dat[!dat$patient_short %in% test_patients, , drop = FALSE]
 
   surv_train <- survival::Surv(train$survival_time, train$survival_event)
   surv_test <- survival::Surv(test$survival_time, test$survival_event)
 
-  feature_cols <- intersect(colnames(feature_df), colnames(train))
-  feature_cols <- setdiff(feature_cols, "sample_id")
+  feature_cols <- c(setdiff(intersect(colnames(feature_df), colnames(train)), "sample_id"), covar_cols)
   x_train <- as.matrix(train[, feature_cols, drop = FALSE])
   x_test <- as.matrix(test[, feature_cols, drop = FALSE])
 
@@ -124,7 +161,7 @@ task_prognostic_model <- function(config, ctx) {
     risk_test <- as.numeric(stats::predict(cvfit, newx = x_test, s = chosen_lambda, type = "link"))
     model_obj <- cvfit
     method_summary <- c(
-      sprintf("- Method: Lasso-Cox (cv.glmnet, nfolds=10)"),
+      sprintf("- Method: Lasso-Cox (cv.glmnet nfolds=10 on train only; single holdout evaluation, not nested CV)"),
       sprintf("- lambda.min: `%s`", signif(chosen_lambda, 4)),
       sprintf("- Non-zero features: `%s / %s`", nrow(coef_df), length(feature_cols))
     )
@@ -165,22 +202,30 @@ task_prognostic_model <- function(config, ctx) {
   )
 
   cindex <- function(risk, time, event) {
-    if (sum(event == 1, na.rm = TRUE) < 5) return(NA_real_)
+    empty <- c(estimate = NA_real_, low = NA_real_, high = NA_real_)
+    if (sum(event == 1, na.rm = TRUE) < 5) return(empty)
     fit <- tryCatch(
       survival::coxph(survival::Surv(time, event) ~ risk),
       error = function(e) NULL
     )
-    if (is.null(fit)) return(NA_real_)
-    unname(summary(fit)$concordance[1])
+    if (is.null(fit)) return(empty)
+    cc <- summary(fit)$concordance
+    est <- unname(cc[1])
+    se <- unname(cc[2])
+    c(estimate = est, low = max(0, est - 1.96 * se), high = min(1, est + 1.96 * se))
   }
-  cindex_train <- cindex(risk_train, train$survival_time, train$survival_event)
-  cindex_test <- cindex(risk_test, test$survival_time, test$survival_event)
+  ci_train <- cindex(risk_train, train$survival_time, train$survival_event)
+  ci_test <- cindex(risk_test, test$survival_time, test$survival_event)
+  cindex_train <- unname(ci_train["estimate"])
+  cindex_test <- unname(ci_test["estimate"])
 
   perf_df <- data.frame(
     split = c("train", "test"),
     n = c(nrow(train), nrow(test)),
     events = c(sum(train$survival_event, na.rm = TRUE), sum(test$survival_event, na.rm = TRUE)),
     cindex = c(cindex_train, cindex_test),
+    cindex_low = c(unname(ci_train["low"]), unname(ci_test["low"])),
+    cindex_high = c(unname(ci_train["high"]), unname(ci_test["high"])),
     stringsAsFactors = FALSE
   )
 
@@ -215,8 +260,30 @@ task_prognostic_model <- function(config, ctx) {
   write_table_safe(perf_df, file.path(ctx$results_dir, sprintf("%s_prognostic_performance.csv", project)))
   saveRDS(model_obj, file.path(ctx$objects_dir, sprintf("%s_prognostic_model.rds", project)))
 
+  # Locked inference contract for external validation: transform, feature set,
+  # coefficients (lasso only; rsf has no linear coefficients) and the risk
+  # cutoff derived from the TRAIN split. External cohorts must reuse these
+  # instead of re-deriving them.
+  risk_cutoff <- stats::median(risk_train, na.rm = TRUE)
+  coef_map <- NULL
+  if (method == "lasso_cox" && !is.null(coef_df) && nrow(coef_df) &&
+      all(c("gene_name", "coefficient") %in% colnames(coef_df))) {
+    keep_rows <- !is.na(coef_df$gene_name) & coef_df$gene_name != ""
+    coef_map <- as.list(stats::setNames(coef_df$coefficient[keep_rows], coef_df$gene_name[keep_rows]))
+  }
+  model_meta <- list(
+    project = project,
+    method = method,
+    transform = "log2p1",
+    features = as.list(features),
+    coefficients = coef_map,
+    covariates = as.list(covariates),
+    cutoff = risk_cutoff
+  )
+  write_json(model_meta, file.path(ctx$objects_dir, sprintf("%s_prognostic_model_meta.json", project)))
+
   if (requireNamespace("ggplot2", quietly = TRUE)) {
-    risk_df$risk_group <- ifelse(risk_df$risk_score >= stats::median(risk_df$risk_score, na.rm = TRUE), "High", "Low")
+    risk_df$risk_group <- ifelse(risk_df$risk_score >= risk_cutoff, "High", "Low")
     if (requireNamespace("survival", quietly = TRUE)) {
       surv <- survival::survfit(survival::Surv(survival_time, survival_event) ~ risk_group + split, data = risk_df)
       p_km <- tryCatch(
@@ -244,15 +311,20 @@ task_prognostic_model <- function(config, ctx) {
     sprintf("Prognostic Model for %s", project),
     c(
       method_summary,
+      sprintf("- Covariates in model: `%s`", if (length(covar_cols)) paste(covar_cols, collapse = ", ") else "none"),
+      sprintf("- Split: patient-level (no patient shared between train/test)"),
       sprintf("- Train samples: `%s` (events=%s)", nrow(train), sum(train$survival_event, na.rm = TRUE)),
       sprintf("- Test samples: `%s` (events=%s)", nrow(test), sum(test$survival_event, na.rm = TRUE)),
       sprintf("- C-index train/test: `%s / %s`", signif(cindex_train, 3), signif(cindex_test, 3)),
+      sprintf("- C-index 95%% CI test: `%s - %s`", signif(unname(ci_test["low"]), 3), signif(unname(ci_test["high"]), 3)),
+      sprintf("- Locked risk cutoff (train median): `%s`", signif(risk_cutoff, 4)),
       "",
       "## Outputs",
       sprintf("- `results/%s_prognostic_coefficients.csv`", project),
       sprintf("- `results/%s_prognostic_risk_scores.csv`", project),
       sprintf("- `results/%s_prognostic_performance.csv`", project),
-      sprintf("- `objects/%s_prognostic_model.rds`", project)
+      sprintf("- `objects/%s_prognostic_model.rds`", project),
+      sprintf("- `objects/%s_prognostic_model_meta.json` (locked transform/features/coefficients/cutoff for external validation)", project)
     )
   )
 

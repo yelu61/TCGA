@@ -204,14 +204,37 @@ dedupe_gene_rows <- function(mat, gene_map, reference_mat = NULL) {
   list(matrix = mat2, gene_map = gene_map2)
 }
 
+# DESeq2-style count gate: refuse non-integer input instead of round()ing it,
+# which would fabricate count data from TPM/normalized values.
+assert_integer_counts <- function(counts, context = "counts matrix") {
+  if (anyNA(counts)) {
+    fail("%s contains NA values.", context)
+  }
+  if (any(counts < 0)) {
+    fail("%s contains negative values.", context)
+  }
+  if (any(counts %% 1 != 0)) {
+    fail("%s contains non-integer values. Differential expression requires raw integer counts (e.g. the unstranded assay), not TPM/normalized values.",
+         context)
+  }
+  invisible(TRUE)
+}
+
 extract_assay <- function(se, preferred) {
   assay_names <- names(SummarizedExperiment::assays(se))
-  if (length(preferred) && preferred %in% assay_names) {
-    return(SummarizedExperiment::assay(se, preferred))
-  }
   if (!length(assay_names)) {
     fail("No assays found in SummarizedExperiment object.")
   }
+  if (length(preferred)) {
+    # A requested assay that does not exist is a hard error: silently falling
+    # back to another assay can hand TPM to a counts-expecting consumer.
+    if (!(preferred %in% assay_names)) {
+      fail("Assay '%s' not found. Available assays: %s",
+           preferred, paste(assay_names, collapse = ", "))
+    }
+    return(SummarizedExperiment::assay(se, preferred))
+  }
+  # No preference stated: first assay is the documented default.
   SummarizedExperiment::assay(se, assay_names[[1L]])
 }
 
@@ -678,6 +701,19 @@ run_survival_models <- function(score_df, clinical) {
     return(NULL)
   }
   merged <- merge(score_df, clinical, by = "sample_id", all.x = TRUE)
+  # Patient-level dedup: one record per patient so a patient with multiple
+  # samples is not counted twice. Keeps the alphabetically first sample_id
+  # (for TCGA barcodes this prefers the primary-tumor aliquot) and records
+  # how many records were dropped.
+  n_dedup_dropped <- 0L
+  if ("patient_short" %in% colnames(merged)) {
+    merged <- merged[order(merged$sample_id), , drop = FALSE]
+    dup_patient <- duplicated(merged$patient_short)
+    n_dedup_dropped <- sum(dup_patient)
+    if (any(dup_patient)) {
+      merged <- merged[!dup_patient, , drop = FALSE]
+    }
+  }
   cols <- survival_columns(merged)
   if (all(is.na(unlist(cols)))) {
     return(NULL)
@@ -699,6 +735,19 @@ run_survival_models <- function(score_df, clinical) {
   fit <- survival::coxph(survival::Surv(time = survival_time, event = survival_event) ~ score, data = dat)
   cox <- summary(fit)
 
+  # Proportional-hazards check: report cox.zph p-values so violations are
+  # visible instead of silently assumed.
+  ph <- tryCatch(survival::cox.zph(fit), error = function(e) NULL)
+  ph_table <- NULL
+  if (!is.null(ph)) {
+    ph_table <- data.frame(
+      term = rownames(ph$table),
+      ph_chisq = unname(ph$table[, "chisq"]),
+      ph_p_value = unname(ph$table[, "p"]),
+      stringsAsFactors = FALSE
+    )
+  }
+
   cutoff <- stats::median(dat$score, na.rm = TRUE)
   dat$score_group <- ifelse(dat$score >= cutoff, "High", "Low")
   km <- survival::survfit(survival::Surv(time = survival_time, event = survival_event) ~ score_group, data = dat)
@@ -712,10 +761,16 @@ run_survival_models <- function(score_df, clinical) {
       p_value = unname(cox$coefficients[, "Pr(>|z|)"]),
       stringsAsFactors = FALSE
     ),
+    ph = ph_table,
     km = list(
       median_cutoff = cutoff,
       n = nrow(dat),
       groups = table(dat$score_group)
+    ),
+    meta = list(
+      time_origin = "days from diagnosis (days_to_death; days_to_last_follow_up when death date is missing)",
+      event_definition = "vital_status dead/deceased = event, alive = censored",
+      patient_dedup = n_dedup_dropped
     )
   )
 }
