@@ -82,7 +82,7 @@ check_project_data <- function(project) {
   }
 }
 
-validate_one <- function(cfg, prefix = "") {
+validate_one <- function(cfg, prefix = "", available_steps = 0L) {
   task <- cfg$task
   if (is.null(task) || !nzchar(task)) {
     add_issue(sprintf("%stask field is missing", prefix))
@@ -103,7 +103,7 @@ validate_one <- function(cfg, prefix = "") {
       add_issue(sprintf("%spipeline.steps is empty", prefix))
     }
     for (i in seq_along(steps)) {
-      validate_one(steps[[i]], prefix = sprintf("%sstep[%s].", prefix, i - 1))
+      validate_one(steps[[i]], prefix = sprintf("%sstep[%s].", prefix, i - 1), available_steps = i - 1L)
     }
     return(invisible(NULL))
   }
@@ -123,6 +123,16 @@ validate_one <- function(cfg, prefix = "") {
   }
   if (!is.null(cfg$run_dirs)) {
     for (p in unlist(cfg$run_dirs)) {
+      if (grepl("\\{\\{", p)) {
+        pattern <- "^\\{\\{step([0-9]+)\\.run_dir\\}\\}$"
+        index <- if (grepl(pattern, p)) suppressWarnings(as.numeric(sub(pattern, "\\1", p))) else NA_real_
+        if (!is.na(index) && is.finite(index) && index < available_steps) {
+          add_note(sprintf("%srun_dir deferred until prior pipeline step completes: %s", prefix, p))
+        } else {
+          add_issue(sprintf("%srun_dirs reference must name a prior pipeline step's run_dir: %s", prefix, p))
+        }
+        next
+      }
       if (!dir.exists(p)) {
         add_issue(sprintf("%srun_dirs entry not found: %s", prefix, p))
       } else {

@@ -16,8 +16,9 @@ for (i in seq_along(args)) {
   }
 }
 if (is.null(config_path)) {
-  stop("Usage: Rscript tcga_toolkit/scripts/run_task.R --config <config.json> [--output-root <dir>] [--overwrite]", call. = FALSE)
+  stop("Usage: Rscript tcga_toolkit/scripts/run_task.R --config <config.json> [--output-root <dir>]", call. = FALSE)
 }
+if (overwrite) stop("Native runs are immutable; --overwrite is no longer supported. Start a new run.", call. = FALSE)
 
 script_flag <- grep("^--file=", commandArgs(), value = TRUE)[1]
 if (is.na(script_flag)) {
@@ -29,11 +30,10 @@ options(tcga_toolkit.root = normalizePath(file.path(script_dir, ".."), mustWork 
 if (!is.null(output_root)) {
   options(tcga_toolkit.output_root = normalizePath(output_root, mustWork = TRUE))
 }
-if (overwrite) {
-  options(tcga_toolkit.overwrite = TRUE)
-}
+options(tcga_toolkit.overwrite = FALSE)
 
 source(file.path(script_dir, "common.R"))
+source(file.path(script_dir, "run_provenance.R"))
 source(file.path(script_dir, "task_audit_data.R"))
 source(file.path(script_dir, "task_prepare_bulk_rna.R"))
 source(file.path(script_dir, "task_run_deg.R"))
@@ -65,7 +65,7 @@ source(file.path(script_dir, "task_drug_response.R"))
 
 config <- read_config(config_path)
 validate_config(config$task %||% "", config)
-ctx <- init_run_context(config, config_path)
+ctx <- new_provenance_context(config, config_path)
 
 dispatch <- list(
   audit_data = task_audit_data,
@@ -103,34 +103,7 @@ if (is.null(handler)) {
   fail("Unknown task: %s", ctx$task)
 }
 
-result <- NULL
-error_message <- NULL
-status <- "success"
-
-tryCatch({
-  result <- handler(config, ctx)
-}, error = function(e) {
-  error_message <<- conditionMessage(e)
-  status <<- "failed"
-  message("Task failed: ", error_message)
-})
-
-write_json(
-  list(
-    task = ctx$task,
-    task_id = ctx$task_id,
-    toolkit_version = ctx$toolkit_version,
-    config_path = ctx$config_path,
-    run_dir = ctx$run_dir,
-    status = status,
-    error = error_message,
-    completed_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-  ),
-  file.path(ctx$run_dir, "run_metadata.json")
-)
-
-if (status == "failed") {
-  stop(error_message, call. = FALSE)
-}
+execution <- execute_provenance_task(config, ctx, handler)
+if (execution$status == "failed") stop(execution$error, call. = FALSE)
 
 cat(ctx$run_dir, "\n")

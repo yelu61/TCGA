@@ -21,6 +21,7 @@ Common optional fields:
 
 - `task_id`: custom suffix for the run folder
 - `project`: TCGA or TARGET project id, e.g. `TCGA-BRCA` or `TARGET-OS`
+- `provenance_inputs`: additional input file/directory paths to inventory when a task discovers dependencies outside its usual config fields. Relative paths follow the invocation working directory, matching existing task input resolution.
 
 For a fuller description of each task and its config schema, see
 [../references/task_index.md](../references/task_index.md).
@@ -104,7 +105,18 @@ Every run writes to:
 - `tcga_runs/<task_id>/plots/`
 - `tcga_runs/<task_id>/objects/`
 - `tcga_runs/<task_id>/report.md`
-- `tcga_runs/<task_id>/run_metadata.json` (includes `toolkit_version`)
+- `tcga_runs/<task_id>/run_metadata.json` (schema v1, status, backend and manifest hashes)
+- `tcga_runs/<task_id>/config_used.json` (effective config snapshot)
+- `tcga_runs/<task_id>/run_inputs.tsv` (declared inputs and known cohort candidates)
+- `tcga_runs/<task_id>/run_artifacts.tsv` (run-relative output inventory)
+- `tcga_runs/<task_id>/sessionInfo.txt`
+
+Pipeline steps produce the same contract, using their resolved config values.
+Successful execution requires successful provenance finalization. Native runs
+are immutable: `--overwrite` is rejected and colliding directory names fail.
+This is source evidence, not a claim of complete runtime input discovery or
+scientific acceptance. See [result contract](../references/result_contract.md)
+for registration, flexible deliveries and safe archive rules.
 
 ## Companion scripts (introspection, no analysis side effects)
 

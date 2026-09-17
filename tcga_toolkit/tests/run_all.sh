@@ -20,6 +20,12 @@ echo
 echo "== test_inference_guards.R =="
 Rscript tests/test_inference_guards.R || status=1
 echo
+echo "== test_run_provenance.R =="
+Rscript tests/test_run_provenance.R || status=1
+echo
+echo "== test_pipeline_validation.R =="
+Rscript tests/test_pipeline_validation.R || status=1
+echo
 echo "== test_python_adapter.py =="
 if command -v python3 >/dev/null 2>&1; then
   python3 tests/test_python_adapter.py || status=1

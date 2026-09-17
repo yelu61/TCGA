@@ -21,38 +21,18 @@ task_pipeline <- function(config, ctx) {
 
     info("Pipeline step %s/%s: %s (task_id=%s)", i, length(steps), step_config$task, step_task_id)
 
-    step_ctx <- init_run_context(step_config, ctx$config_path)
+    step_ctx <- new_provenance_context(step_config, ctx$config_path)
+    step_ctx$parent_run_id <- ctx$task_id
 
     handler <- dispatch[[step_config$task]]
     if (is.null(handler)) {
       fail("Unknown pipeline task: %s", step_config$task)
     }
 
-    result <- NULL
-    error_message <- NULL
-    step_status <- "success"
-
-    tryCatch({
-      result <- handler(step_config, step_ctx)
-    }, error = function(e) {
-      error_message <<- conditionMessage(e)
-      step_status <<- "failed"
-      message(sprintf("Pipeline step %s failed: %s", i, error_message))
-    })
-
-    write_json(
-      list(
-        task = step_config$task,
-        task_id = step_ctx$task_id,
-        toolkit_version = step_ctx$toolkit_version,
-        config_path = step_ctx$config_path,
-        run_dir = step_ctx$run_dir,
-        status = step_status,
-        error = error_message,
-        completed_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-      ),
-      file.path(step_ctx$run_dir, "run_metadata.json")
-    )
+    execution <- execute_provenance_task(step_config, step_ctx, handler)
+    result <- execution$result
+    error_message <- execution$error
+    step_status <- execution$status
 
     step_contexts[[length(step_contexts) + 1L]] <- step_ctx
     step_results[[length(step_results) + 1L]] <- list(
